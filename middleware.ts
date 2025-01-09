@@ -36,10 +36,11 @@ async function findBestLocaleForVisitor(
   return detectedLocaleAsSiteLocale;
 }
 
-function buildUrl(locale: SiteLocale, path: string) {
+function buildUrl(apiToken: string, locale: SiteLocale, path: string) {
   const simulatedPageProps: GlobalPageProps = {
     params: {
       locale,
+      apiToken,
     },
   };
 
@@ -47,9 +48,20 @@ function buildUrl(locale: SiteLocale, path: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname: pathnameWithApiToken } = request.nextUrl;
 
-  const locales = await getAvailableLocales();
+  const apiToken = pathnameWithApiToken.match(/^\/([^\/$]+)/)?.[1];
+
+  if (!apiToken) {
+    return NextResponse.redirect(new URL('/no-api-token', request.url));
+  }
+
+  const pathname = pathnameWithApiToken.replace(
+    new RegExp(`^/${apiToken}`),
+    '',
+  );
+
+  const locales = await getAvailableLocales(apiToken);
 
   const localeInPathname = locales.find((locale) =>
     pathname.match(new RegExp(`^/${locale}($|/)`)),
@@ -68,15 +80,16 @@ export async function middleware(request: NextRequest) {
       : '/home';
 
   const normalizedPathname = buildUrl(
+    apiToken,
     normalizedLocale,
     normalizedPathnameWithoutLocale,
   );
 
-  if (pathname !== normalizedPathname) {
+  if (pathnameWithApiToken !== normalizedPathname) {
     return NextResponse.redirect(new URL(normalizedPathname, request.url));
   }
 }
 
 export const config = {
-  matcher: ['/((?!.*\\.|_next|api\\/).*)'],
+  matcher: ['/((?!.*\\.|_next|api\\/|no-api-token).*)'],
 };

@@ -22,12 +22,12 @@ export function generateWrapper<
   realtimeComponent: RealtimeUpdatesPage<PageProps, TResult, TVariables>;
 }) {
   return async function Page(unsanitizedPageProps: PageProps) {
-    const allLocales = await getAvailableLocales();
+    const allLocales = await getAvailableLocales(unsanitizedPageProps.params.apiToken);
     if (!allLocales.includes(unsanitizedPageProps?.params?.locale)) {
       notFound();
     }
 
-    const fallbackLocale = await getFallbackLocale();
+    const fallbackLocale = await getFallbackLocale(unsanitizedPageProps.params.apiToken);
     const { isEnabled: isDraft } = draftMode();
 
     const { searchParams, ...pagePropsWithoutSearchParams } =
@@ -41,13 +41,18 @@ export function generateWrapper<
         fallbackLocale,
       }) || ({} as TVariables);
 
-    const data = await queryDatoCMS(options.query, variables, isDraft);
+    const data = await queryDatoCMS(
+      pageProps.params.apiToken,
+      options.query,
+      variables,
+      isDraft,
+    );
 
     const { realtimeComponent: RealTime, contentComponent: Content } = options;
 
     return isDraft ? (
       <RealTime
-        token={process.env.DATOCMS_READONLY_API_TOKEN || ''}
+        token={pageProps.params.apiToken}
         query={options.query}
         variables={variables}
         initialData={data}

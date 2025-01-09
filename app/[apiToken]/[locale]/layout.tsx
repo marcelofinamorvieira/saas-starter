@@ -13,22 +13,22 @@ type Params = GlobalPageProps & {
   children: React.ReactNode;
 };
 
-export async function generateMetadata() {
+export async function generateMetadata({ params }: Params) {
   const { isEnabled: isDraft } = draftMode();
-  const data = await queryDatoCMS(LayoutDocument, {}, isDraft);
+  const data = await queryDatoCMS(params.apiToken, LayoutDocument, {}, isDraft);
   return toNextMetadata(data._site.faviconMetaTags);
 }
 
-export default async function RootLayout({ children, params }: Params) {
+export default async function RootLayout({ children, ...pageProps }: Params) {
   const { isEnabled: isDraft } = draftMode();
-  const allLocales: string[] = await getAvailableLocales();
+  const allLocales: string[] = await getAvailableLocales(pageProps.params.apiToken);
 
   // Only try to match against valid locales for this site, not any random string
-  if (!allLocales.includes(params.locale)) {
+  if (!allLocales.includes(pageProps.params.locale)) {
     notFound();
   }
 
-  const data = await queryDatoCMS(LayoutDocument, {}, isDraft);
+  const data = await queryDatoCMS(pageProps.params.apiToken, LayoutDocument, {}, isDraft);
 
   return (
     <>
@@ -38,7 +38,7 @@ export default async function RootLayout({ children, params }: Params) {
         b={data.layout?.mainColor.blue || 108}
       />
       {children}
-      <ScrollToTop globalPageProps={{ params }} isDraft={isDraft} />
+      <ScrollToTop globalPageProps={pageProps} isDraft={isDraft} />
     </>
   );
 }
